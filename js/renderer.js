@@ -68,16 +68,16 @@ export class Renderer {
   }
 
   // ── ESQUELETO ────────────────────────────────────────────
-  drawSkeleton(landmarks, punchType = PUNCH_TYPES.NONE) {
+  drawSkeleton(landmarks, punchType = PUNCH_TYPES.NONE, customColor = null) {
     if (!landmarks) return;
     const ctx = this.ctx;
     const W = this.canvas.width, H = this.canvas.height;
-    const color    = (punchType && punchType.color) || 'rgba(255,255,255,0.6)';
+    const color    = customColor || (punchType && punchType.color) || 'rgba(255,255,255,0.6)';
     const isActive = punchType && punchType.id !== 'none';
     const px = lm  => ({ x: lm.x * W, y: lm.y * H });
 
     ctx.lineWidth   = isActive ? 3 : 2;
-    ctx.strokeStyle = isActive ? color : 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = isActive ? color : (customColor ? customColor : 'rgba(255,255,255,0.4)');
     ctx.lineCap     = 'round';
     ctx.shadowColor = isActive ? color : 'transparent';
     ctx.shadowBlur  = isActive ? 15 : 0;
@@ -96,7 +96,7 @@ export class Renderer {
       const isWrist = idx === LM.LEFT_WRIST || idx === LM.RIGHT_WRIST;
       const r = isWrist ? (isActive ? 10 : 7) : 5;
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = isActive && isWrist ? color : 'rgba(255,255,255,0.7)';
+      ctx.fillStyle = isActive && isWrist ? color : (customColor ? customColor : 'rgba(255,255,255,0.7)');
       ctx.fill();
       if (isActive && isWrist) {
         ctx.beginPath(); ctx.arc(p.x, p.y, r + 4, 0, Math.PI * 2);
@@ -108,7 +108,7 @@ export class Renderer {
   }
 
   // ── ARENA ────────────────────────────────────────────────
-  drawArenaBackground(timestamp) {
+  drawArenaBackground(timestamp, mode = 'solo') {
     const ctx = this.ctx;
     const W = this.canvas.width, H = this.canvas.height;
     const cx = W / 2, cy = H * 0.5;
@@ -116,11 +116,24 @@ export class Renderer {
     ctx.fillStyle = '#06060e';
     ctx.fillRect(0, 0, W, H);
 
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.85);
-    grad.addColorStop(0,   'rgba(55,10,100,0.45)');
-    grad.addColorStop(0.6, 'rgba(20,5,45,0.2)');
-    grad.addColorStop(1,   'rgba(0,0,0,0)');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    if (mode === 'solo') {
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.85);
+      grad.addColorStop(0,   'rgba(55,10,100,0.45)');
+      grad.addColorStop(0.6, 'rgba(20,5,45,0.2)');
+      grad.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    } else {
+      // Modo Dupla — gradientes para P1 (esq, azul) e P2 (dir, dourado)
+      const gradP1 = ctx.createRadialGradient(W * 0.25, cy, 0, W * 0.25, cy, W * 0.5);
+      gradP1.addColorStop(0, 'rgba(0, 212, 255, 0.25)');
+      gradP1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradP1; ctx.fillRect(0, 0, W * 0.5, H);
+
+      const gradP2 = ctx.createRadialGradient(W * 0.75, cy, 0, W * 0.75, cy, W * 0.5);
+      gradP2.addColorStop(0, 'rgba(255, 214, 10, 0.25)');
+      gradP2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradP2; ctx.fillRect(W * 0.5, 0, W * 0.5, H);
+    }
 
     const t  = (timestamp * 0.0004) % 1;
     const vp = { x: cx, y: H * 0.42 };
@@ -145,50 +158,27 @@ export class Renderer {
   }
 
   // ── LUVA com imagem real ─────────────────────────────────
-  /**
-   * Desenha o mitt usando a imagem fotorrealista.
-   * O efeito 3D de perspectiva é feito com ctx.transform para simular
-   * o ângulo que o treinador segura a luva para cada tipo de soco.
-   *
-   * mittRotation é aplicado ao CONJUNTO position+image para que a luva
-   * pareça virada na direção correta.
-   *
-   * Para o gancho: usa a imagem de perfil (mitt_hook.png) que já mostra
-   * a luva de lado — não precisa de rotação extra.
-   *
-   * Para uppercut: usa imagem de cima para baixo (mitt_uppercut.png).
-   */
   _drawMittImage(ctx, punchId, size, alpha, isHit, isMiss) {
     const vis    = PUNCH_VISUAL[punchId] || PUNCH_VISUAL.jab;
     const imgKey = vis.img;
     const img    = this.images[imgKey];
     if (!img || !img.complete) return;
 
-    // Luvas BEM maiores
     const w = size * 3.8;
     const h = size * 3.8;
 
     ctx.save();
-
-    // Skew horizontal para perspectiva por tipo de soco
     ctx.transform(1, 0, vis.skewX, 1, 0, 0);
     ctx.scale(vis.scaleX, vis.scaleY);
     ctx.globalAlpha = alpha;
-
-    // 'screen' blend: pixels pretos (0,0,0) somem na arena escura;
-    // pixels coloridos (vermelho, branco) ficam visíveis.
-    // Isso elimina o fundo preto das imagens JPG/PNG sem precisar
-    // de canal alpha.
     ctx.globalCompositeOperation = 'screen';
 
     if (isMiss) {
-      // Tint escurecido para erro
       ctx.filter = 'brightness(0.45) sepia(1) saturate(4) hue-rotate(-20deg)';
     }
 
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
-
-    ctx.restore(); // restaura composite op e filter
+    ctx.restore();
   }
 
   // ── ENTRADA PRINCIPAL — chamada pelo game loop ──────────
@@ -200,15 +190,11 @@ export class Renderer {
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
     ctx.translate(x, y);
 
-    // A imagem de gancho já está virada na orientação certa.
-    // Para os outros, aplicamos a rotação do mitt (definida no gameEngine).
     ctx.rotate(mittRotation);
 
     if (state === 'flying') {
-      // Zoom de dentro para fora: começa pequeno (0.06x) e cresce (1x)
       const scale = 0.06 + 0.94 * progress;
 
-      // Rastro translúcido (últimas 3 posições)
       for (let i = 1; i <= 3; i++) {
         const tp = Math.max(0, progress - i * 0.07);
         if (tp <= 0) continue;
@@ -236,23 +222,21 @@ export class Renderer {
       this._drawMittImage(ctx, punchType.id, radius, 1, true, false);
       ctx.restore();
       ctx.restore();
-      this.drawImpact(this.ctx, x, y, 1 - progress, punchType.color);
+      this.drawImpact(this.ctx, x, y, 1 - progress, mitt.playerId === 2 ? '#ffd60a' : (mitt.playerId === 1 ? '#00d4ff' : punchType.color));
       return;
 
     } else if (state === 'miss') {
       this._drawMittImage(ctx, punchType.id, radius, alpha, false, true);
 
     } else {
-      // Ativo — leve pulsação
       const pulse = 1 + Math.sin(Date.now() * 0.004) * 0.03;
       ctx.save();
       ctx.scale(pulse, pulse);
       this._drawMittImage(ctx, punchType.id, radius, 1, false, false);
       ctx.restore();
 
-      // Timer ring ao redor
       if (mitt.timeLeft !== undefined) {
-        ctx.rotate(-mittRotation); // desfaz a rotação para o ring ficar reto
+        ctx.rotate(-mittRotation);
         const tp    = mitt.timeLeft / mitt.totalTime;
         const ringR = radius * 1.15;
         ctx.beginPath();
@@ -271,32 +255,30 @@ export class Renderer {
   }
 
   // ── NOME DO SOCO GIGANTE ─────────────────────────────────
-  drawBigPunchLabel(punchType, W, H) {
+  drawBigPunchLabel(punchType, W, H, posX = null) {
     if (!punchType || punchType.id === 'none') return;
     const ctx   = this.ctx;
     const label = punchType.name;
     const color = punchType.color || '#ffffff';
-    const fSize = Math.min(140, Math.max(80, W * 0.13));
-    const tx = W / 2, ty = H * 0.12;
+    const fSize = posX ? Math.min(80, Math.max(50, W * 0.08)) : Math.min(140, Math.max(80, W * 0.13));
+    const tx = posX !== null ? posX : W / 2;
+    const ty = H * 0.12;
 
     ctx.save();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = `900 ${fSize}px 'Bebas Neue', sans-serif`;
 
-    // Contorno preto espesso para legibilidade
     ctx.lineWidth   = fSize * 0.14;
     ctx.strokeStyle = 'rgba(0,0,0,0.96)';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur  = 15;
     ctx.strokeText(label, tx, ty);
 
-    // Texto branco
     ctx.shadowBlur = 0;
     ctx.fillStyle  = '#ffffff';
     ctx.fillText(label, tx, ty);
 
-    // Glow colorido
     ctx.shadowColor = color;
     ctx.shadowBlur  = 50;
     ctx.fillStyle   = color;

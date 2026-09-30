@@ -1,6 +1,6 @@
 /**
  * main.js
- * Entry point — controla as fases do jogo e integra todos os módulos
+ * Entry point — controla as fases do jogo (Solo e Dupla) e integra todos os módulos
  */
 
 import { CameraManager }  from './camera.js';
@@ -14,9 +14,12 @@ class KickTrainer {
     // ── Módulos ────────────────────────────────────────────
     this.camera       = new CameraManager();
     this.detector     = new PoseDetector();
-    this.engine       = new GameEngine();
+    this.detectorP1   = new PoseDetector();
+    this.detectorP2   = new PoseDetector();
+    this.engine       = new GameEngine('solo');
 
     // ── Estado ────────────────────────────────────────────
+    this.mode         = 'solo';     // solo | dupla
     this.phase        = 'intro';    // intro | calibration | tutorial | game | gameover
     this.tutorialIdx  = 0;
     this.tutorialPunchConfirmed = [false, false, false, false, false];
@@ -47,14 +50,9 @@ class KickTrainer {
     this.lastPoseResults = null;
     this.flashColor  = '#ffffff';
     this.flashAlpha  = 0;
-    this.punchDisplayAlpha = 0;
-    this.punchDisplayType  = PUNCH_TYPES.NONE;
-    this.punchDisplayTimer = 0;
-    this.lastHitInfo = null;
     this.animFrame   = null;
 
     // ── Calibração ────────────────────────────────────────
-    this.calibReady  = false;
     this.calibReadyTimer = 0;
 
     // ── Timer do jogo ─────────────────────────────────────
@@ -81,15 +79,28 @@ class KickTrainer {
   // ══════════════════════════════════════════════════════════
   // FASE 1 — CALIBRAÇÃO
   // ══════════════════════════════════════════════════════════
-  async startSetup() {
+  async startSetup(mode = 'solo') {
+    this.mode = mode;
+    this.engine.setMode(mode);
     this.showScreen('calibration');
+
+    // Alternar visibilidade das silhuetas e checklists
+    const soloGuide  = document.getElementById('pose-guide-solo');
+    const duplaGuide = document.getElementById('pose-guide-dupla');
+    const soloCheck  = document.getElementById('calib-checklist-solo');
+    const duplaCheck = document.getElementById('calib-checklist-dupla');
+
+    if (soloGuide)  soloGuide.classList.toggle('hidden', mode !== 'solo');
+    if (duplaGuide) duplaGuide.classList.toggle('hidden', mode !== 'dupla');
+    if (soloCheck)  soloCheck.classList.toggle('hidden', mode !== 'solo');
+    if (duplaCheck) duplaCheck.classList.toggle('hidden', mode !== 'dupla');
 
     // Inicializar canvas de calibração
     this.calibRenderer = new Renderer(this.calibCanvas);
     this.handleResize();
 
     try {
-      await this.camera.initialize(this.calibVideo, this.onPoseResults);
+      await this.camera.initialize(this.calibVideo, this.onPoseResults, mode);
       this.calibReadyTimer = 0;
       this.calibLoop();
     } catch (err) {
@@ -108,43 +119,91 @@ class KickTrainer {
   updateCalibHUD() {
     if (!this.lastPoseResults) return;
 
-    const results = this.detector.analyze(this.lastPoseResults);
-    const feedback = this.detector.getCalibrationFeedback();
-    const cal = results.calibration;
-
-    // Atualizar ícone e mensagem
     const icon = document.getElementById('calib-icon');
     const msg  = document.getElementById('calib-msg');
     const sub  = document.getElementById('calib-submsg');
-    if (icon) icon.textContent = feedback.icon;
-    if (msg)  msg.textContent  = feedback.msg;
-    if (sub)  sub.textContent  = feedback.sub;
+    const btn  = document.getElementById('btn-proceed-game');
 
-    // Checklist
-    this.setCheckItem('check-pose',     cal.poseDetected);
-    this.setCheckItem('check-distance', cal.poseDetected && cal.distanceOk);
-    this.setCheckItem('check-light',    true);
+    if (this.mode === 'solo') {
+      const resData = this.lastPoseResults.results || this.lastPoseResults;
+      const results = this.detector.analyze(resData);
+      const feedback = this.detector.getCalibrationFeedback();
+      const cal = results.calibration;
 
-    // Renderizar esqueleto
-    if (this.calibRenderer && this.lastPoseResults) {
-      this.calibRenderer.resize();
-      this.calibRenderer.clear();
-      this.calibRenderer.drawSkeleton(results.landmarks);
-    }
+      if (icon) icon.textContent = feedback.icon;
+      if (msg)  msg.textContent  = feedback.msg;
+      if (sub)  sub.textContent  = feedback.sub;
 
-    // Mostrar botão de iniciando e começar após ~2s
-    const btn = document.getElementById('btn-proceed-game');
-    if (feedback.ready) {
-      this.calibReadyTimer++;
-      if (this.calibReadyTimer > 30 && btn) { 
-        btn.classList.remove('hidden');
+      this.setCheckItem('check-pose',     cal.poseDetected);
+      this.setCheckItem('check-distance', cal.poseDetected && cal.distanceOk);
+      this.setCheckItem('check-light',    true);
+
+      if (this.calibRenderer && results.landmarks) {
+        this.calibRenderer.resize();
+        this.calibRenderer.clear();
+        this.calibRenderer.drawSkeleton(results.landmarks);
       }
-      if (this.calibReadyTimer > 90) { // ~3 segundos (30fps)
-        this.startGame();
+
+      if (feedback.ready) {
+        this.calibReadyTimer++;
+        if (this.calibReadyTimer > 30 && btn) btn.classList.remove('hidden');
+        if (this.calibReadyTimer > 90) this.startGame();
+      } else {
+        this.calibReadyTimer = 0;
+        if (btn) btn.classList.add('hidden');
       }
     } else {
-      this.calibReadyTimer = 0;
-      if (btn) btn.classList.add('hidden');
+      // MODO DUPLA
+      const p1Res = this.detectorP1.analyze(this.lastPoseResults.p1);
+      const p2Res = this.detectorP2.analyze(this.lastPoseResults.p2);
+
+      const fbP1 = this.detectorP1.getCalibrationFeedback();
+      const fbP2 = this.detectorP2.getCalibrationFeedback();
+
+      const calP1 = p1Res.calibration;
+      const calP2 = p2Res.calibration;
+
+      this.setCheckItem('check-pose-p1', calP1.poseDetected);
+      this.setCheckItem('check-dist-p1', calP1.poseDetected && calP1.distanceOk);
+      this.setCheckItem('check-pose-p2', calP2.poseDetected);
+      this.setCheckItem('check-dist-p2', calP2.poseDetected && calP2.distanceOk);
+
+      const isP1Ready = fbP1.ready;
+      const isP2Ready = fbP2.ready;
+      const bothReady = isP1Ready && isP2Ready;
+
+      if (msg) {
+        if (bothReady) msg.textContent = 'Ambos os jogadores em posição perfeita! 🥊';
+        else if (isP1Ready && !isP2Ready) msg.textContent = 'Jogador 1 OK! Jogador 2, ajuste sua posição';
+        else if (!isP1Ready && isP2Ready) msg.textContent = 'Jogador 2 OK! Jogador 1, ajuste sua posição';
+        else msg.textContent = 'Posicionem-se nos lados correspondentes';
+      }
+
+      if (icon) icon.textContent = bothReady ? '✅' : '👥';
+      if (sub)  sub.textContent  = 'Jogador 1 à esquerda | Jogador 2 à direita';
+
+      if (this.calibRenderer) {
+        this.calibRenderer.resize();
+        this.calibRenderer.clear();
+
+        if (p1Res.landmarks) {
+          const mappedP1 = p1Res.landmarks.map(pt => ({ ...pt, x: pt.x * 0.5 }));
+          this.calibRenderer.drawSkeleton(mappedP1, p1Res.punch, '#00d4ff');
+        }
+        if (p2Res.landmarks) {
+          const mappedP2 = p2Res.landmarks.map(pt => ({ ...pt, x: 0.5 + pt.x * 0.5 }));
+          this.calibRenderer.drawSkeleton(mappedP2, p2Res.punch, '#ffd60a');
+        }
+      }
+
+      if (bothReady) {
+        this.calibReadyTimer++;
+        if (this.calibReadyTimer > 30 && btn) btn.classList.remove('hidden');
+        if (this.calibReadyTimer > 90) this.startGame();
+      } else {
+        this.calibReadyTimer = 0;
+        if (btn) btn.classList.add('hidden');
+      }
     }
   }
 
@@ -157,13 +216,12 @@ class KickTrainer {
   }
 
   // ══════════════════════════════════════════════════════════
-  // FASE 2 — TUTORIAL
+  // FASE 2 — TUTORIAL (Solo apenas)
   // ══════════════════════════════════════════════════════════
   startTutorial() {
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
     this.showScreen('tutorial');
 
-    // Usar o mesmo feed de câmera no canvas do tutorial
     this.tutRenderer = new Renderer(this.tutCanvas);
     this.tutCanvas.style.transform = 'scaleX(-1)';
     this.handleResize();
@@ -181,25 +239,22 @@ class KickTrainer {
       const ctx = this.tutCanvas.getContext('2d');
       const W = this.tutCanvas.width;
       const H = this.tutCanvas.height;
-      // Desenhar frame do vídeo (não espelhado pois o canvas já tem transform)
       ctx.save();
       ctx.scale(-1, 1);
       ctx.drawImage(this.calibVideo, -W, 0, W, H);
       ctx.restore();
-      // Overlay escuro semitransparente
       ctx.fillStyle = 'rgba(8,8,15,0.35)';
       ctx.fillRect(0, 0, W, H);
     }
 
     if (this.lastPoseResults) {
-      const results = this.detector.analyze(this.lastPoseResults);
+      const resData = this.lastPoseResults.results || this.lastPoseResults;
+      const results = this.detector.analyze(resData);
 
-      // Renderizar esqueleto
       if (this.tutRenderer) {
         this.tutRenderer.drawSkeleton(results.landmarks, results.punch);
       }
 
-      // Verificar se o soco atual foi executado
       const currentPunch = PUNCH_INFO[this.tutorialIdx].type;
       if (results.punch && results.punch.id === currentPunch.id) {
         this.onTutorialPunchDetected(results.punch);
@@ -226,7 +281,6 @@ class KickTrainer {
 
       this.showToast(`✅ ${punchType.name} reconhecido!`);
 
-      // Auto-avançar após 1.5s
       setTimeout(() => {
         if (this.phase === 'tutorial' && this.tutorialPunchConfirmed[this.tutorialIdx]) {
           if (this.tutorialIdx < PUNCH_INFO.length - 1) {
@@ -241,11 +295,9 @@ class KickTrainer {
     const info = PUNCH_INFO[this.tutorialIdx];
     const total = PUNCH_INFO.length;
 
-    // Atualizar barra de progresso
     const bar = document.getElementById('tutorial-bar');
     if (bar) bar.style.width = `${((this.tutorialIdx + 1) / total) * 100}%`;
 
-    // Atualizar exibição do soco
     const emoji = document.getElementById('punch-emoji');
     const name  = document.getElementById('punch-name');
     const desc  = document.getElementById('punch-desc');
@@ -254,11 +306,8 @@ class KickTrainer {
     if (name)  name.textContent  = info.type.name;
     if (desc)  desc.textContent  = info.desc;
     if (tip)   tip.textContent   = info.tip;
+    if (name)  name.style.color  = info.type.color;
 
-    // Cor do nome
-    if (name) name.style.color = info.type.color;
-
-    // Reset detector
     const ring  = document.getElementById('detect-ring');
     const label = document.getElementById('detect-label');
     if (ring) {
@@ -270,12 +319,10 @@ class KickTrainer {
       label.style.color = '';
     }
 
-    // Dots
     document.querySelectorAll('.punch-dot').forEach((dot, i) => {
       dot.classList.toggle('active', i === this.tutorialIdx);
     });
 
-    // Botões nav
     const btnPrev = document.getElementById('btn-prev-punch');
     const btnNext = document.getElementById('btn-next-punch');
     const btnPlay = document.getElementById('btn-play');
@@ -308,25 +355,25 @@ class KickTrainer {
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
     this.showScreen('game');
 
-    // Inicializar renderer do jogo
     this.gameRenderer = new Renderer(this.gameCanvas);
-    
-    // Configurar canvas da mini câmera do jogador
     this.playerCamCanvas = document.getElementById('canvas-player-cam');
-    
+
+    // Alternar visual do HUD de jogo
+    const hudSolo  = document.getElementById('hud-top-solo');
+    const hudDupla = document.getElementById('hud-top-dupla');
+    const divider  = document.getElementById('split-divider');
+
+    if (hudSolo)  hudSolo.classList.toggle('hidden', this.mode !== 'solo');
+    if (hudDupla) hudDupla.classList.toggle('hidden', this.mode !== 'dupla');
+    if (divider)  divider.classList.toggle('hidden', this.mode !== 'dupla');
+
     this.handleResize();
 
-    // Reset timer
     this.gameTimerStart = 0;
-
-    // Iniciar engine
     this.engine.reset();
     this.engine.start(this.gameCanvas.offsetWidth, this.gameCanvas.offsetHeight);
 
-    // Reset HUD
     this.updateGameHUD(this.engine.getState());
-
-    // Iniciar game loop
     this.gameLoop();
   }
 
@@ -349,81 +396,113 @@ class KickTrainer {
 
     // ── Renderizar cenário de arena ────────────────────────────
     if (this.gameRenderer) {
-      this.gameRenderer.drawArenaBackground(timestamp);
+      this.gameRenderer.drawArenaBackground(timestamp, this.mode);
     }
 
-    // ── Analisar pose e atualizar mini-câmera ──────────────────
-    let punchResult = null;
-    
+    // ── Analisar poses e atualizar mini-câmera ──────────────────
+    let punchResultP1 = null;
+    let punchResultP2 = null;
+
     if (this.calibVideo && this.calibVideo.readyState >= 2 && this.playerCamCanvas) {
       const pCtx = this.playerCamCanvas.getContext('2d');
       const pW = this.playerCamCanvas.width;
       const pH = this.playerCamCanvas.height;
-      
-      // Desenhar frame do vídeo (espelhado via CSS, então desenhamos normal ou espelhado?)
-      // O canvas já tem scaleX(-1) no CSS, então desenhamos normal aqui
+
       pCtx.drawImage(this.calibVideo, 0, 0, pW, pH);
-      
-      // Overlay escuro
       pCtx.fillStyle = 'rgba(0,0,0,0.3)';
       pCtx.fillRect(0, 0, pW, pH);
-      
-      if (this.lastPoseResults) {
-        const results = this.detector.analyze(this.lastPoseResults);
-        punchResult = results;
 
-        // Renderizar esqueleto na mini câmera
-        // O renderer atual usa o width/height do canvas para escalar.
-        // Vamos temporariamente apontar o ctx do renderer para o playerCamCanvas
+      if (this.lastPoseResults) {
         const oldCtx = this.gameRenderer.ctx;
         const oldCanvas = this.gameRenderer.canvas;
         this.gameRenderer.ctx = pCtx;
         this.gameRenderer.canvas = this.playerCamCanvas;
-        
-        this.gameRenderer.drawSkeleton(results.landmarks, results.punch);
-        
-        // Restaurar
+
+        if (this.mode === 'solo') {
+          const resData = this.lastPoseResults.results || this.lastPoseResults;
+          punchResultP1 = this.detector.analyze(resData);
+          this.gameRenderer.drawSkeleton(punchResultP1.landmarks, punchResultP1.punch);
+          if (punchResultP1.punch && punchResultP1.punch.id !== 'none') {
+            this.showPunchFeedback(punchResultP1.punch);
+          }
+        } else {
+          punchResultP1 = this.detectorP1.analyze(this.lastPoseResults.p1);
+          punchResultP2 = this.detectorP2.analyze(this.lastPoseResults.p2);
+
+          if (punchResultP1.landmarks) {
+            const mappedP1 = punchResultP1.landmarks.map(pt => ({ ...pt, x: pt.x * 0.5 }));
+            this.gameRenderer.drawSkeleton(mappedP1, punchResultP1.punch, '#00d4ff');
+          }
+          if (punchResultP2.landmarks) {
+            const mappedP2 = punchResultP2.landmarks.map(pt => ({ ...pt, x: 0.5 + pt.x * 0.5 }));
+            this.gameRenderer.drawSkeleton(mappedP2, punchResultP2.punch, '#ffd60a');
+          }
+
+          if (punchResultP1.punch && punchResultP1.punch.id !== 'none') {
+            this.showPunchFeedbackDuo(punchResultP1.punch, 1);
+          }
+          if (punchResultP2.punch && punchResultP2.punch.id !== 'none') {
+            this.showPunchFeedbackDuo(punchResultP2.punch, 2);
+          }
+        }
+
         this.gameRenderer.ctx = oldCtx;
         this.gameRenderer.canvas = oldCanvas;
-
-        // Mostrar feedback de soco no HUD
-        if (results.punch && results.punch.id !== 'none') {
-          this.showPunchFeedback(results.punch);
-        }
       }
     }
 
     // ── Atualizar engine ───────────────────────────────────────
-    const hitInfo = this.engine.update(timestamp, punchResult);
-    const state   = this.engine.getState();
+    const engineHits = this.engine.update(timestamp, punchResultP1, punchResultP2);
+    const state = this.engine.getState();
 
-    // ── Processar hit ──────────────────────────────────────────
-    if (hitInfo && hitInfo.type === 'hit') {
-      this.onHit(hitInfo, state);
+    if (engineHits) {
+      if (engineHits.p1Hit && engineHits.p1Hit.type === 'hit') this.onHit(engineHits.p1Hit);
+      if (engineHits.p2Hit && engineHits.p2Hit.type === 'hit') this.onHit(engineHits.p2Hit);
     }
 
     // ── Renderizar luvas e efeitos ─────────────────────────────
     if (this.gameRenderer) {
-      // Luvas
       for (const mitt of state.mitts) {
         this.gameRenderer.drawMitt(mitt);
       }
-      // Nome do soco em LETRAS GIGANTES no centro-topo
-      const activeMitt = state.mitts.find(m => m.state === 'active' || m.state === 'flying');
-      if (activeMitt) {
-        this.gameRenderer.drawBigPunchLabel(
-          activeMitt.punchType,
-          this.gameCanvas.width,
-          this.gameCanvas.height
-        );
+
+      if (this.mode === 'solo') {
+        const activeMitt = state.mitts.find(m => m.state === 'active' || m.state === 'flying');
+        if (activeMitt) {
+          this.gameRenderer.drawBigPunchLabel(
+            activeMitt.punchType,
+            this.gameCanvas.width,
+            this.gameCanvas.height
+          );
+        }
+      } else {
+        const activeMittP1 = state.mitts.find(m => m.playerId === 1 && (m.state === 'active' || m.state === 'flying'));
+        const activeMittP2 = state.mitts.find(m => m.playerId === 2 && (m.state === 'active' || m.state === 'flying'));
+
+        if (activeMittP1) {
+          this.gameRenderer.drawBigPunchLabel(
+            activeMittP1.punchType,
+            this.gameCanvas.width,
+            this.gameCanvas.height,
+            this.gameCanvas.width * 0.25
+          );
+        }
+        if (activeMittP2) {
+          this.gameRenderer.drawBigPunchLabel(
+            activeMittP2.punchType,
+            this.gameCanvas.width,
+            this.gameCanvas.height,
+            this.gameCanvas.width * 0.75
+          );
+        }
       }
-      // Efeitos
+
       for (const eff of state.effects) {
         this.gameRenderer.drawImpact(
           this.gameRenderer.ctx, eff.x, eff.y, eff.progress, eff.color
         );
       }
-      // Flash de tela
+
       if (this.flashAlpha > 0) {
         this.gameRenderer.drawHitFlash(this.flashColor, this.flashAlpha);
         this.flashAlpha = Math.max(0, this.flashAlpha - 0.05);
@@ -432,27 +511,24 @@ class KickTrainer {
 
     // ── Atualizar HUD ──────────────────────────────────────────
     this.updateGameHUD(state);
-
     this.animFrame = requestAnimationFrame(this.gameLoop);
   }
 
-  onHit(hitInfo, state) {
-    // Flash de tela
-    this.flashColor = hitInfo.punchType.color;
-    this.flashAlpha = 0.6;
-
-    // Vibração (se suportado)
+  onHit(hitInfo) {
+    this.flashColor = hitInfo.playerId === 2 ? '#ffd60a' : (hitInfo.playerId === 1 ? '#00d4ff' : hitInfo.punchType.color);
+    this.flashAlpha = 0.5;
     if (navigator.vibrate) navigator.vibrate([50]);
   }
 
   showPunchFeedback(punchType) {
     const el = document.getElementById('hud-punch-type');
-    if (!el) return;
-    el.textContent = `${punchType.emoji} ${punchType.name}`;
-    el.style.color = punchType.color;
-    el.classList.remove('flash');
-    void el.offsetWidth; // trigger reflow
-    el.classList.add('flash');
+    if (el) {
+      el.textContent = `${punchType.emoji} ${punchType.name}`;
+      el.style.color = punchType.color;
+      el.classList.remove('flash');
+      void el.offsetWidth;
+      el.classList.add('flash');
+    }
 
     const detected = document.getElementById('hud-punch-detected');
     if (detected) {
@@ -461,14 +537,25 @@ class KickTrainer {
     }
   }
 
-  updateTimer(timeLeft) {
-    const el = document.getElementById('hud-timer');
-    if (el) {
-      const m = Math.floor(timeLeft / 60);
-      const s = Math.floor(timeLeft % 60);
-      el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
-      el.style.color = timeLeft < 15 ? '#e63946' : '#ffd60a';
+  showPunchFeedbackDuo(punchType, playerId) {
+    const detectedId = playerId === 1 ? 'hud-p1-punch-detected' : 'hud-p2-punch-detected';
+    const detected = document.getElementById(detectedId);
+    if (detected) {
+      detected.textContent = punchType.name;
+      detected.style.color = punchType.color;
     }
+  }
+
+  updateTimer(timeLeft) {
+    const m = Math.floor(timeLeft / 60);
+    const s = Math.floor(timeLeft % 60);
+    const formatted = `${m}:${s.toString().padStart(2,'0')}`;
+    const timerColor = timeLeft < 15 ? '#e63946' : '#ffd60a';
+
+    const elSolo = document.getElementById('hud-timer');
+    const elDuo  = document.getElementById('hud-timer-dupla');
+    if (elSolo) { elSolo.textContent = formatted; elSolo.style.color = timerColor; }
+    if (elDuo)  { elDuo.textContent  = formatted; elDuo.style.color  = timerColor; }
   }
 
   updateGameHUD(state) {
@@ -477,23 +564,52 @@ class KickTrainer {
       if (el) el.textContent = val;
     };
 
-    setEl('hud-score', state.score.toLocaleString());
-    setEl('hud-level', state.level);
-    setEl('hud-hits',  state.hits);
+    if (state.mode === 'solo') {
+      setEl('hud-score', state.score.toLocaleString());
+      setEl('hud-level', state.level);
+      setEl('hud-hits',  state.hits);
 
-    // Barra de nível
-    const bar = document.getElementById('hud-level-bar');
-    if (bar) bar.style.width = `${state.levelProgress * 100}%`;
+      const bar = document.getElementById('hud-level-bar');
+      if (bar) bar.style.width = `${state.levelProgress * 100}%`;
 
-    // Combo
-    const comboEl = document.getElementById('hud-combo');
-    const comboCount = document.getElementById('combo-count');
-    if (comboEl && comboCount) {
-      if (state.combo >= 2) {
-        comboEl.classList.remove('hidden');
-        comboCount.textContent = `x${state.combo}`;
-      } else {
-        comboEl.classList.add('hidden');
+      const comboEl = document.getElementById('hud-combo');
+      const comboCount = document.getElementById('combo-count');
+      if (comboEl && comboCount) {
+        if (state.combo >= 2) {
+          comboEl.classList.remove('hidden');
+          comboCount.textContent = `x${state.combo}`;
+        } else {
+          comboEl.classList.add('hidden');
+        }
+      }
+    } else {
+      // DUPLA HUD
+      setEl('hud-p1-score', state.p1.score.toLocaleString());
+      setEl('hud-p1-hits',  state.p1.hits);
+
+      const p1ComboWrap = document.getElementById('hud-p1-combo-wrap');
+      const p1ComboVal  = document.getElementById('hud-p1-combo');
+      if (p1ComboWrap && p1ComboVal) {
+        if (state.p1.combo >= 2) {
+          p1ComboWrap.classList.remove('hidden');
+          p1ComboVal.textContent = `x${state.p1.combo}`;
+        } else {
+          p1ComboWrap.classList.add('hidden');
+        }
+      }
+
+      setEl('hud-p2-score', state.p2.score.toLocaleString());
+      setEl('hud-p2-hits',  state.p2.hits);
+
+      const p2ComboWrap = document.getElementById('hud-p2-combo-wrap');
+      const p2ComboVal  = document.getElementById('hud-p2-combo');
+      if (p2ComboWrap && p2ComboVal) {
+        if (state.p2.combo >= 2) {
+          p2ComboWrap.classList.remove('hidden');
+          p2ComboVal.textContent = `x${state.p2.combo}`;
+        } else {
+          p2ComboWrap.classList.add('hidden');
+        }
       }
     }
   }
@@ -524,35 +640,69 @@ class KickTrainer {
       if (el) el.textContent = val;
     };
 
-    setEl('result-score', results.score.toLocaleString());
-    setEl('result-hits',  results.hits);
-    setEl('result-combo', results.maxCombo);
-    setEl('result-level', results.level);
+    const soloContent = document.getElementById('gameover-content-solo');
+    const duoContent  = document.getElementById('gameover-content-dupla');
 
-    // Breakdown de socos
-    const breakdown = document.getElementById('punch-breakdown');
-    if (breakdown) {
-      const punchColors = {
-        jab:      '#00d4ff',
-        direto:   '#ff6b35',
-        cruzado:  '#a855f7',
-        gancho:   '#22c55e',
-        uppercut: '#ffd60a',
-      };
-      const punchNames = {
-        jab: 'Jab', direto: 'Direto', cruzado: 'Cruzado', gancho: 'Gancho', uppercut: 'Uppercut'
-      };
-      const maxCount = Math.max(1, ...Object.values(results.punchCounts));
-      breakdown.innerHTML = Object.entries(results.punchCounts).map(([key, count]) => `
-        <div class="punch-stat-row">
-          <span class="punch-stat-name">${punchNames[key]}</span>
-          <div class="punch-stat-bar-wrap">
-            <div class="punch-stat-bar" style="width:${(count/maxCount)*100}%;background:${punchColors[key]}"></div>
-          </div>
-          <span class="punch-stat-count">${count}</span>
-        </div>
-      `).join('');
+    if (results.mode === 'solo') {
+      if (soloContent) soloContent.classList.remove('hidden');
+      if (duoContent)  duoContent.classList.add('hidden');
+
+      setEl('result-score', results.score.toLocaleString());
+      setEl('result-hits',  results.hits);
+      setEl('result-combo', results.maxCombo);
+      setEl('result-level', results.level);
+
+      this.renderPunchBreakdown(document.getElementById('punch-breakdown'), results.punchCounts);
+    } else {
+      // MODO DUPLA
+      if (soloContent) soloContent.classList.add('hidden');
+      if (duoContent)  duoContent.classList.remove('hidden');
+
+      const winnerCard = document.getElementById('card-winner');
+      const winnerBadge = winnerCard ? winnerCard.querySelector('.winner-badge') : null;
+
+      if (results.isTie) {
+        if (winnerBadge) winnerBadge.textContent = '🤝 EMPATE!';
+      } else {
+        if (winnerBadge) winnerBadge.textContent = '🏆 VENCEDOR';
+      }
+
+      setEl('winner-name',  results.winner.name);
+      setEl('winner-score', results.winner.score.toLocaleString());
+      setEl('winner-hits',  results.winner.hits);
+      setEl('winner-combo', results.winner.maxCombo);
+      this.renderPunchBreakdown(document.getElementById('winner-punch-breakdown'), results.winner.punchCounts);
+
+      setEl('loser-name',  results.loser.name);
+      setEl('loser-score', results.loser.score.toLocaleString());
+      setEl('loser-hits',  results.loser.hits);
+      setEl('loser-combo', results.loser.maxCombo);
+      this.renderPunchBreakdown(document.getElementById('loser-punch-breakdown'), results.loser.punchCounts);
     }
+  }
+
+  renderPunchBreakdown(containerEl, punchCounts) {
+    if (!containerEl || !punchCounts) return;
+    const punchColors = {
+      jab:      '#00d4ff',
+      direto:   '#ff6b35',
+      cruzado:  '#a855f7',
+      gancho:   '#22c55e',
+      uppercut: '#ffd60a',
+    };
+    const punchNames = {
+      jab: 'Jab', direto: 'Direto', cruzado: 'Cruzado', gancho: 'Gancho', uppercut: 'Uppercut'
+    };
+    const maxCount = Math.max(1, ...Object.values(punchCounts));
+    containerEl.innerHTML = Object.entries(punchCounts).map(([key, count]) => `
+      <div class="punch-stat-row">
+        <span class="punch-stat-name">${punchNames[key]}</span>
+        <div class="punch-stat-bar-wrap">
+          <div class="punch-stat-bar" style="width:${(count/maxCount)*100}%;background:${punchColors[key]}"></div>
+        </div>
+        <span class="punch-stat-count">${count}</span>
+      </div>
+    `).join('');
   }
 
   restartGame() {
@@ -565,9 +715,10 @@ class KickTrainer {
     this.camera.stop();
     this.engine.reset();
     this.showScreen('intro');
-    // Re-inicializar tudo
     this.camera = new CameraManager();
     this.detector = new PoseDetector();
+    this.detectorP1 = new PoseDetector();
+    this.detectorP2 = new PoseDetector();
     this.lastPoseResults = null;
   }
 
@@ -584,15 +735,14 @@ class KickTrainer {
         canvas.height = canvas.offsetHeight;
       }
     });
-    
+
     if (this.playerCamCanvas) {
-      // Manter aspect ratio do vídeo (4:3) para a mini câmera
       const w = this.playerCamCanvas.offsetWidth;
       const h = this.playerCamCanvas.offsetHeight;
       this.playerCamCanvas.width = w;
       this.playerCamCanvas.height = h;
     }
-    
+
     if (this.engine && this.gameCanvas) {
       this.engine.canvasW = this.gameCanvas.offsetWidth;
       this.engine.canvasH = this.gameCanvas.offsetHeight;
@@ -618,6 +768,5 @@ class KickTrainer {
 // ══════════════════════════════════════════════════════════
 const game = new KickTrainer();
 window.kickGame = game;
-
-// Mostrar tela de intro
 game.showScreen('intro');
+

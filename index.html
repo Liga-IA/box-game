@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KickTrainer — Treino de Socos com IA</title>
-  <meta name="description" content="Treine seus socos com reconhecimento de pose por câmera. Jab, direto, cruzado, gancho e uppercut detectados em tempo real." />
+  <title>BoxeTrainer — Treino de Socos com IA</title>
+  <meta name="description"
+    content="Treine seus socos com reconhecimento de pose por câmera. Jab, direto, cruzado, gancho e uppercut detectados em tempo real." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;900&display=swap"
+    rel="stylesheet" />
   <!-- MediaPipe Pose -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
   <!-- ═══════════════════════════════════════
@@ -24,7 +29,7 @@
     <div class="intro-content">
       <div class="logo-wrap">
         <div class="logo-glove">🥊</div>
-        <h1 class="logo-title">KICK<span>TRAINER</span></h1>
+        <h1 class="logo-title">BOXE<span>TRAINER</span></h1>
         <p class="logo-sub">Treino de Boxe com Reconhecimento de Pose</p>
       </div>
       <div class="intro-features">
@@ -41,10 +46,16 @@
           <span>Velocidade progressiva</span>
         </div>
       </div>
-      <button id="btn-start" class="btn-primary" onclick="window.kickGame.startSetup()">
-        <span>COMEÇAR TREINO</span>
-        <div class="btn-shimmer"></div>
-      </button>
+      <div class="mode-select-wrap">
+        <button id="btn-start-solo" class="btn-primary" onclick="window.kickGame.startSetup('solo')">
+          <span>🎮 JOGAR SOLO</span>
+          <div class="btn-shimmer"></div>
+        </button>
+        <button id="btn-start-dupla" class="btn-primary btn-dupla" onclick="window.kickGame.startSetup('dupla')">
+          <span>👥 JOGAR EM DUPLA</span>
+          <div class="btn-shimmer"></div>
+        </button>
+      </div>
       <p class="intro-note">Certifique-se de estar em um ambiente bem iluminado e com espaço para se mover</p>
     </div>
   </div>
@@ -57,29 +68,95 @@
       <video id="video-feed" autoplay muted playsinline></video>
       <canvas id="canvas-pose" class="overlay-canvas"></canvas>
 
-      <!-- Silhueta guia -->
-      <div id="pose-guide" class="pose-guide">
+      <!-- Silhueta guia SOLO -->
+      <div id="pose-guide-solo" class="pose-guide">
         <svg viewBox="0 0 200 400" class="silhouette-svg">
-          <!-- Cabeça -->
-          <circle cx="100" cy="50" r="28" fill="none" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <!-- Pescoço -->
-          <line x1="100" y1="78" x2="100" y2="105" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <!-- Ombros -->
-          <line x1="40" y1="120" x2="160" y2="120" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <!-- Braço esq -->
-          <line x1="40" y1="120" x2="15" y2="200" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <line x1="15" y1="200" x2="5" y2="270" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <!-- Braço dir -->
-          <line x1="160" y1="120" x2="185" y2="200" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <line x1="185" y1="200" x2="195" y2="270" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <!-- Torso -->
-          <line x1="40" y1="120" x2="50" y2="250" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <line x1="160" y1="120" x2="150" y2="250" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <line x1="50" y1="250" x2="150" y2="250" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <!-- Pernas -->
-          <line x1="80" y1="250" x2="70" y2="360" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
-          <line x1="120" y1="250" x2="130" y2="360" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4"/>
+          <circle cx="100" cy="50" r="28" fill="none" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="100" y1="78" x2="100" y2="105" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="40" y1="120" x2="160" y2="120" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="40" y1="120" x2="15" y2="200" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="15" y1="200" x2="5" y2="270" stroke="rgba(255,200,0,0.4)" stroke-width="3" stroke-dasharray="6 4" />
+          <line x1="160" y1="120" x2="185" y2="200" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="185" y1="200" x2="195" y2="270" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="40" y1="120" x2="50" y2="250" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="160" y1="120" x2="150" y2="250" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="50" y1="250" x2="150" y2="250" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="80" y1="250" x2="70" y2="360" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
+          <line x1="120" y1="250" x2="130" y2="360" stroke="rgba(255,200,0,0.4)" stroke-width="3"
+            stroke-dasharray="6 4" />
         </svg>
+      </div>
+
+      <!-- Silhueta guia DUPLA (P1 esquerda, P2 direita) -->
+      <div id="pose-guide-dupla" class="pose-guide-dupla hidden">
+        <div class="pose-guide-p1">
+          <div class="player-tag tag-p1">JOGADOR 1</div>
+          <svg viewBox="0 0 200 400" class="silhouette-svg">
+            <circle cx="100" cy="50" r="28" fill="none" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="100" y1="78" x2="100" y2="105" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="40" y1="120" x2="160" y2="120" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="40" y1="120" x2="15" y2="200" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="15" y1="200" x2="5" y2="270" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="160" y1="120" x2="185" y2="200" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="185" y1="200" x2="195" y2="270" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="40" y1="120" x2="50" y2="250" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="160" y1="120" x2="150" y2="250" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="50" y1="250" x2="150" y2="250" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="80" y1="250" x2="70" y2="360" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="120" y1="250" x2="130" y2="360" stroke="rgba(0,212,255,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+          </svg>
+        </div>
+        <div class="pose-guide-p2">
+          <div class="player-tag tag-p2">JOGADOR 2</div>
+          <svg viewBox="0 0 200 400" class="silhouette-svg">
+            <circle cx="100" cy="50" r="28" fill="none" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="100" y1="78" x2="100" y2="105" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="40" y1="120" x2="160" y2="120" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="40" y1="120" x2="15" y2="200" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="15" y1="200" x2="5" y2="270" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="160" y1="120" x2="185" y2="200" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="185" y1="200" x2="195" y2="270" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="40" y1="120" x2="50" y2="250" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="160" y1="120" x2="150" y2="250" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="50" y1="250" x2="150" y2="250" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="80" y1="250" x2="70" y2="360" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+            <line x1="120" y1="250" x2="130" y2="360" stroke="rgba(255,214,10,0.6)" stroke-width="3"
+              stroke-dasharray="6 4" />
+          </svg>
+        </div>
       </div>
 
       <!-- HUD de Calibração -->
@@ -89,7 +166,9 @@
           <div id="calib-msg" class="calib-msg">Posicione-se em frente à câmera</div>
           <div id="calib-submsg" class="calib-submsg">Afaste-se para que seu corpo inteiro apareça</div>
         </div>
-        <div class="calib-checklist">
+
+        <!-- Checklist Solo -->
+        <div id="calib-checklist-solo" class="calib-checklist">
           <div id="check-pose" class="check-item">
             <span class="check-dot"></span>
             <span>Corpo detectado</span>
@@ -103,6 +182,33 @@
             <span>Iluminação OK</span>
           </div>
         </div>
+
+        <!-- Checklist Dupla -->
+        <div id="calib-checklist-dupla" class="calib-checklist calib-checklist-dupla hidden">
+          <div class="check-group p1-group">
+            <span class="group-title p1-color">JOGADOR 1 (Esq)</span>
+            <div id="check-pose-p1" class="check-item">
+              <span class="check-dot"></span>
+              <span>Corpo detectado</span>
+            </div>
+            <div id="check-dist-p1" class="check-item">
+              <span class="check-dot"></span>
+              <span>Distância OK</span>
+            </div>
+          </div>
+          <div class="check-group p2-group">
+            <span class="group-title p2-color">JOGADOR 2 (Dir)</span>
+            <div id="check-pose-p2" class="check-item">
+              <span class="check-dot"></span>
+              <span>Corpo detectado</span>
+            </div>
+            <div id="check-dist-p2" class="check-item">
+              <span class="check-dot"></span>
+              <span>Distância OK</span>
+            </div>
+          </div>
+        </div>
+
         <button id="btn-proceed-game" class="btn-primary hidden" disabled>
           <span>INICIANDO...</span>
         </button>
@@ -119,10 +225,13 @@
       <canvas id="canvas-game-main" class="arena-canvas"></canvas>
       <canvas id="canvas-player-cam" class="player-cam-canvas"></canvas>
 
+      <!-- Linha Divisória de Tela (Modo Dupla) -->
+      <div id="split-divider" class="split-divider hidden"></div>
+
       <!-- HUD do Jogo -->
       <div id="game-hud" class="game-hud">
-        <!-- Cabeçalho -->
-        <div class="hud-top">
+        <!-- Cabeçalho SOLO -->
+        <div id="hud-top-solo" class="hud-top">
           <div class="hud-score-wrap">
             <div class="hud-label">PONTOS</div>
             <div id="hud-score" class="hud-score">0</div>
@@ -150,7 +259,46 @@
           </div>
         </div>
 
-        <!-- Indicador de soco detectado -->
+        <!-- Cabeçalho DUPLA -->
+        <div id="hud-top-dupla" class="hud-top hud-top-dupla hidden">
+          <!-- P1 Panel -->
+          <div class="hud-player-panel p1-hud-panel">
+            <div class="player-hud-header p1-color">JOGADOR 1</div>
+            <div class="hud-score-wrap">
+              <div class="hud-label">PONTOS</div>
+              <div id="hud-p1-score" class="hud-score p1-score">0</div>
+            </div>
+            <div class="hud-sub-stats">
+              <div><span class="hud-label">ACERTOS:</span> <span id="hud-p1-hits" class="val">0</span></div>
+              <div id="hud-p1-combo-wrap" class="hidden"><span class="hud-label">COMBO:</span> <span id="hud-p1-combo"
+                  class="val combo-highlight">x2</span></div>
+            </div>
+            <div id="hud-p1-punch-detected" class="hud-punch-detected"></div>
+          </div>
+
+          <!-- Center Timer -->
+          <div class="hud-center-timer">
+            <div class="hud-label">TEMPO RESTANTE</div>
+            <div id="hud-timer-dupla" class="hud-stat-val" style="font-size:2.2rem;color:#ffd60a">1:30</div>
+          </div>
+
+          <!-- P2 Panel -->
+          <div class="hud-player-panel p2-hud-panel">
+            <div class="player-hud-header p2-color">JOGADOR 2</div>
+            <div class="hud-score-wrap">
+              <div class="hud-label">PONTOS</div>
+              <div id="hud-p2-score" class="hud-score p2-score">0</div>
+            </div>
+            <div class="hud-sub-stats">
+              <div><span class="hud-label">ACERTOS:</span> <span id="hud-p2-hits" class="val">0</span></div>
+              <div id="hud-p2-combo-wrap" class="hidden"><span class="hud-label">COMBO:</span> <span id="hud-p2-combo"
+                  class="val combo-highlight">x2</span></div>
+            </div>
+            <div id="hud-p2-punch-detected" class="hud-punch-detected"></div>
+          </div>
+        </div>
+
+        <!-- Indicadores de soco detectado -->
         <div id="hud-punch-type" class="hud-punch-type"></div>
 
         <!-- Barra de progresso de nível -->
@@ -182,7 +330,8 @@
        TELA DE FIM DE JOGO
   ═══════════════════════════════════════ -->
   <div id="screen-gameover" class="screen">
-    <div class="gameover-content">
+    <!-- Resultado SOLO -->
+    <div id="gameover-content-solo" class="gameover-content">
       <div class="gameover-glove">🥊</div>
       <h2 class="gameover-title">TREINO FINALIZADO!</h2>
       <div class="results-grid">
@@ -220,6 +369,51 @@
         </button>
       </div>
     </div>
+
+    <!-- Resultado DUPLA (Vencedor em cima, Perdedor embaixo) -->
+    <div id="gameover-content-dupla" class="gameover-content gameover-content-dupla hidden">
+      <h2 class="gameover-title">RESULTADO DO DUELO 🥊</h2>
+
+      <!-- CARD VENCEDOR (TOPO) -->
+      <div id="card-winner" class="duo-result-card winner-card">
+        <div class="winner-badge">🏆 VENCEDOR</div>
+        <h3 id="winner-name" class="duo-player-name">JOGADOR 1</h3>
+        <div class="duo-stats-row">
+          <div class="duo-stat"><span class="lbl">PONTOS:</span> <span id="winner-score" class="val highlight">0</span>
+          </div>
+          <div class="duo-stat"><span class="lbl">ACERTOS:</span> <span id="winner-hits" class="val">0</span></div>
+          <div class="duo-stat"><span class="lbl">MAX COMBO:</span> <span id="winner-combo" class="val">0</span></div>
+        </div>
+        <div class="punch-stats duo-punch-stats">
+          <h4>Socos do Vencedor</h4>
+          <div id="winner-punch-breakdown" class="punch-breakdown"></div>
+        </div>
+      </div>
+
+      <!-- CARD PERDEDOR (EMBAIXO) -->
+      <div id="card-loser" class="duo-result-card loser-card">
+        <div class="loser-badge">🥈 2º LUGAR</div>
+        <h3 id="loser-name" class="duo-player-name">JOGADOR 2</h3>
+        <div class="duo-stats-row">
+          <div class="duo-stat"><span class="lbl">PONTOS:</span> <span id="loser-score" class="val">0</span></div>
+          <div class="duo-stat"><span class="lbl">ACERTOS:</span> <span id="loser-hits" class="val">0</span></div>
+          <div class="duo-stat"><span class="lbl">MAX COMBO:</span> <span id="loser-combo" class="val">0</span></div>
+        </div>
+        <div class="punch-stats duo-punch-stats">
+          <h4>Socos do 2º Lugar</h4>
+          <div id="loser-punch-breakdown" class="punch-breakdown"></div>
+        </div>
+      </div>
+
+      <div class="gameover-actions">
+        <button class="btn-primary" onclick="window.kickGame.restartGame()">
+          <span>🔄 JOGAR NOVAMENTE</span>
+        </button>
+        <button class="btn-secondary" onclick="window.kickGame.goHome()">
+          🏠 Menu Principal
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast de feedback -->
@@ -227,4 +421,5 @@
 
   <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

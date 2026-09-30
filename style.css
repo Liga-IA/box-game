@@ -834,3 +834,251 @@ video {
     right: 10px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   ESTILOS PARA MODO DUPLA & TELA DIVIDIDA
+═══════════════════════════════════════════════════════ */
+
+/* Botões de Seleção de Modo na Intro */
+.mode-select-wrap {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.btn-dupla {
+  background: linear-gradient(135deg, #7b2cbf 0%, #3a0ca3 100%) !important;
+  box-shadow: 0 0 30px rgba(123, 44, 191, 0.4), 0 8px 32px rgba(0,0,0,0.4) !important;
+}
+.btn-dupla:hover {
+  box-shadow: 0 0 50px rgba(123, 44, 191, 0.6), 0 12px 40px rgba(0,0,0,0.5) !important;
+}
+
+/* Calibração Dupla */
+.pose-guide-dupla {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-around;
+  padding: 0 5%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.pose-guide-p1, .pose-guide-p2 {
+  position: relative;
+  width: min(35vh, 180px);
+  height: min(70vh, 350px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.75;
+  animation: pulseSilhouette 2s ease-in-out infinite;
+}
+
+.player-tag {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 100px;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8);
+}
+.tag-p1 {
+  background: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.5);
+}
+.tag-p2 {
+  background: rgba(255, 214, 10, 0.2);
+  color: #ffd60a;
+  border: 1px solid rgba(255, 214, 10, 0.5);
+}
+
+.calib-checklist-dupla {
+  display: flex;
+  gap: 2.5rem !important;
+}
+.check-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+.group-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.2rem;
+}
+.p1-color { color: #00d4ff !important; }
+.p2-color { color: #ffd60a !important; }
+
+/* Linha Divisória de Arena */
+.split-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom, 
+    rgba(0, 212, 255, 0.6) 0%, 
+    rgba(255, 255, 255, 0.4) 50%, 
+    rgba(255, 214, 10, 0.6) 100%);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* HUD Dupla */
+.hud-top-dupla {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+.hud-player-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 1.2rem;
+  background: rgba(14, 14, 26, 0.75);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  min-width: 200px;
+}
+.p1-hud-panel { border-left: 4px solid #00d4ff; }
+.p2-hud-panel { border-right: 4px solid #ffd60a; text-align: right; }
+.player-hud-header {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+}
+.p1-score { color: #00d4ff !important; text-shadow: 0 0 20px rgba(0, 212, 255, 0.5) !important; }
+.p2-score { color: #ffd60a !important; text-shadow: 0 0 20px rgba(255, 214, 10, 0.5) !important; }
+
+.hud-sub-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.p2-hud-panel .hud-sub-stats { justify-content: flex-end; }
+.val { color: var(--text); font-weight: 600; }
+.combo-highlight { color: #ff6b35; font-weight: 700; }
+
+.hud-center-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: rgba(8, 8, 15, 0.85);
+  border-radius: 100px;
+  border: 1px solid var(--glass-border);
+}
+
+/* Game Over Dupla — Vencedor (Topo) & Perdedor (Embaixo) */
+.gameover-content-dupla {
+  max-width: 750px !important;
+  gap: 1.2rem !important;
+}
+
+.duo-result-card {
+  position: relative;
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(15px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.winner-card {
+  background: linear-gradient(135deg, rgba(255, 214, 10, 0.12) 0%, rgba(20, 15, 5, 0.6) 100%);
+  border-color: rgba(255, 214, 10, 0.4);
+  box-shadow: 0 0 40px rgba(255, 214, 10, 0.2);
+}
+
+.loser-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(10, 10, 18, 0.6) 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.9;
+}
+
+.winner-badge {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: linear-gradient(90deg, #ffd60a, #ff9f1c);
+  color: #000;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.8rem;
+  border-radius: 100px;
+  font-weight: 900;
+  box-shadow: 0 0 15px rgba(255, 214, 10, 0.5);
+}
+
+.loser-badge {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.8rem;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.duo-player-name {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  margin-top: 0.3rem;
+}
+
+.duo-stats-row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.duo-stat {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+.duo-stat .lbl { color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.1em; }
+.duo-stat .val { font-family: var(--font-display); font-size: 1.5rem; }
+.duo-stat .highlight { color: #ffd60a; font-size: 2rem; }
+
+.duo-punch-stats {
+  padding: 0.75rem !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+.duo-punch-stats h4 {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+

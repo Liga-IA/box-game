@@ -1,0 +1,19 @@
+{
+  "name": "box-game",
+  "version": "1.0.0",
+  "description": "BoxeTrainer — Treino de Socos com IA",
+  "main": "js/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "keywords": [
+    "boxing",
+    "mediapipe",
+    "game",
+    "pose-detection"
+  ],
+  "author": "",
+  "license": "ISC"
+}
