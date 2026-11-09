@@ -4,7 +4,7 @@
  */
 
 import { CameraManager }  from './camera.js';
-import { PoseDetector, PUNCH_TYPES, PUNCH_INFO } from './poseDetector.js';
+import { PoseDetector, PUNCH_TYPES, PUNCH_INFO, STANCE } from './poseDetector.js';
 import { Renderer }       from './renderer.js';
 import { GameEngine }     from './gameEngine.js';
 
@@ -21,6 +21,7 @@ class KickTrainer {
     // ── Estado ────────────────────────────────────────────
     this.mode         = 'solo';     // solo | dupla
     this.phase        = 'intro';    // intro | calibration | tutorial | game | gameover
+    this.currentStance = STANCE.ORTHODOX; // base de luta padrão
     this.tutorialIdx  = 0;
     this.tutorialPunchConfirmed = [false, false, false, false, false];
 
@@ -89,11 +90,19 @@ class KickTrainer {
     const duplaGuide = document.getElementById('pose-guide-dupla');
     const soloCheck  = document.getElementById('calib-checklist-solo');
     const duplaCheck = document.getElementById('calib-checklist-dupla');
+    const stanceSel  = document.getElementById('stance-selector');
 
     if (soloGuide)  soloGuide.classList.toggle('hidden', mode !== 'solo');
     if (duplaGuide) duplaGuide.classList.toggle('hidden', mode !== 'dupla');
     if (soloCheck)  soloCheck.classList.toggle('hidden', mode !== 'solo');
     if (duplaCheck) duplaCheck.classList.toggle('hidden', mode !== 'dupla');
+    // Mostrar seletor de guarda apenas no modo solo
+    if (stanceSel)  stanceSel.classList.toggle('hidden', mode !== 'solo');
+
+    // Aplicar guarda atual a todos os detectores
+    this.detector.setStance(this.currentStance);
+    this.detectorP1.setStance(STANCE.ORTHODOX); // P1 sempre ortodoxo no modo dupla
+    this.detectorP2.setStance(STANCE.ORTHODOX);
 
     // Inicializar canvas de calibração
     this.calibRenderer = new Renderer(this.calibCanvas);
@@ -108,6 +117,23 @@ class KickTrainer {
       this.showToast('❌ Não foi possível acessar a câmera. Verifique as permissões.', 'error');
       this.showScreen('intro');
     }
+  }
+
+  // Seleciona a base de luta do jogador e atualiza a UI
+  setStance(stanceName) {
+    this.currentStance = (stanceName === 'southpaw') ? STANCE.SOUTHPAW : STANCE.ORTHODOX;
+    this.detector.setStance(this.currentStance);
+
+    const btnOrthodox = document.getElementById('btn-orthodox');
+    const btnSouthpaw = document.getElementById('btn-southpaw');
+    if (btnOrthodox) btnOrthodox.classList.toggle('stance-active', this.currentStance === STANCE.ORTHODOX);
+    if (btnSouthpaw) btnSouthpaw.classList.toggle('stance-active', this.currentStance === STANCE.SOUTHPAW);
+
+    this.showToast(
+      this.currentStance === STANCE.ORTHODOX
+        ? '🥊 Ortodoxo: jab com a mão esquerda'
+        : '🥊 Canhoto: jab com a mão direita'
+    );
   }
 
   calibLoop() {
@@ -716,9 +742,9 @@ class KickTrainer {
     this.engine.reset();
     this.showScreen('intro');
     this.camera = new CameraManager();
-    this.detector = new PoseDetector();
-    this.detectorP1 = new PoseDetector();
-    this.detectorP2 = new PoseDetector();
+    this.detector = new PoseDetector(this.currentStance);
+    this.detectorP1 = new PoseDetector(STANCE.ORTHODOX);
+    this.detectorP2 = new PoseDetector(STANCE.ORTHODOX);
     this.lastPoseResults = null;
   }
 

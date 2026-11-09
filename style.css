@@ -331,6 +331,62 @@ video {
   box-shadow: 0 0 10px var(--green-glow);
 }
 
+/* ── STANCE SELECTOR ─────────────────────────────────── */
+.stance-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.stance-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.stance-options {
+  display: flex;
+  gap: 0.7rem;
+}
+.stance-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.55rem 1rem;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 100px;
+}
+.stance-btn:hover {
+  border-color: rgba(255,180,0,0.45);
+  background: rgba(255,180,0,0.08);
+  color: var(--text-primary);
+}
+.stance-btn.stance-active {
+  border-color: var(--gold);
+  background: rgba(255,214,10,0.14);
+  color: var(--gold);
+  box-shadow: 0 0 14px rgba(255,214,10,0.25);
+}
+.stance-icon {
+  font-size: 1.4rem;
+}
+.stance-name {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+.stance-sub {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
 /* ── TUTORIAL HUD ────────────────────────────────────── */
 .tutorial-hud {
   position: absolute;

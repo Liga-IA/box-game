@@ -183,6 +183,25 @@
           </div>
         </div>
 
+        <!-- Seletor de Guarda (Solo) -->
+        <div id="stance-selector" class="stance-selector">
+          <div class="stance-label">🥊 Sua base de luta:</div>
+          <div class="stance-options">
+            <button id="btn-orthodox" class="stance-btn stance-active"
+              onclick="window.kickGame.setStance('orthodox')">
+              <span class="stance-icon">👊</span>
+              <span class="stance-name">ORTODOXO</span>
+              <span class="stance-sub">Esquerda na frente</span>
+            </button>
+            <button id="btn-southpaw" class="stance-btn"
+              onclick="window.kickGame.setStance('southpaw')">
+              <span class="stance-icon">🤜</span>
+              <span class="stance-name">CANHOTO</span>
+              <span class="stance-sub">Direita na frente</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Checklist Dupla -->
         <div id="calib-checklist-dupla" class="calib-checklist calib-checklist-dupla hidden">
           <div class="check-group p1-group">
